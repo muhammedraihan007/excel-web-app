@@ -1,0 +1,105 @@
+{% extends 'processor/base.html' %}
+
+{% block title %}Upload Files{% endblock %}
+
+{% block content %}
+<style>
+    @keyframes fadeInSlideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .card {
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        animation: fadeInSlideUp 0.5s ease-out forwards;
+    }
+
+    .card-title {
+        color: #fff;
+        font-weight: 600;
+    }
+
+    .form-label {
+        color: #f8f9fa;
+    }
+
+    .btn-primary {
+        background: linear-gradient(to right, #2575fc, #6a11cb);
+        border: none;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .list-group-item {
+        background-color: rgba(255, 255, 255, 0.8);
+    }
+</style>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-lg">
+            <div class="card-body p-5">
+                <h1 class="card-title text-center mb-4">Excel File Processor</h1>
+
+                {% if message %}
+                    <div class="alert alert-success">{{ message }}</div>
+                {% endif %}
+
+                {% if error %}
+                    <div class="alert alert-danger">{{ error }}</div>
+                {% endif %}
+
+                <form action="{% url 'upload_file' %}" method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="branch" class="form-label">Select Branch</label>
+                        <select name="branch" class="form-select" required>
+                            <option value="Aluva">Aluva</option>
+                            <option value="Kalamassery">Kalamassery</option>
+                            <option value="Vedimara">Vedimara</option>
+                            <option value="Choondy">Choondy</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="excel_file" class="form-label">Sales File</label>
+                        <input class="form-control" type="file" name="excel_file" accept=".xlsx, .xls" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="receipt_file" class="form-label">Receipt File (for Vedimara branch)</label>
+                        <input class="form-control" type="file" name="receipt_file" accept=".xlsx, .xls">
+                    </div>
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">Upload and Process</button>
+                    </div>
+                </form>
+
+                {% if download_links %}
+                    <div class="mt-5">
+                        <h3 class="text-center text-white">Download Processed Files:</h3>
+                        <div class="list-group">
+                            {% for key, link in download_links.items %}
+                                <a href="{{ link }}" class="list-group-item list-group-item-action">{{ key }}</a>
+                            {% endfor %}
+                        </div>
+                        <div class="text-center mt-4">
+                            <a href="{% url 'home' %}" class="btn btn-secondary">Go to Home</a>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
