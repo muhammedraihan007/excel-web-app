@@ -7,6 +7,7 @@ services:
       - "80:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+      - static_volume:/app/staticfiles
     depends_on:
       - django-app
       - flask-app
@@ -19,6 +20,11 @@ services:
       - PYTHONUNBUFFERED=1
       - DJANGO_SETTINGS_MODULE=excel_web_app.settings
     command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - static_volume:/app/staticfiles
+
+volumes:
+  static_volume:
 
   flask-app:
     build: ./flask_app
