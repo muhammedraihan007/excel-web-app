@@ -23,11 +23,11 @@ services:
     volumes:
       - static_volume:/app/staticfiles
 
-volumes:
-  static_volume:
-
   flask-app:
     build: ./flask_app
     expose:
       - "5000"
     command: gunicorn --bind 0.0.0.0:5000 app:app
+
+volumes:
+  static_volume:
