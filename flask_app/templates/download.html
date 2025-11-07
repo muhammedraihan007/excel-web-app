@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+    <style>
+      body {
+        background-image: url('https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=2020&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D');
+        background-size: cover;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+      }
+      .jumbotron {
+        background-color: rgba(255, 255, 255, 0.8);
+      }
+      .container {
+        flex: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+      <a class="navbar-brand" href="/">Excel Cleaner</a>
+    </nav>
+
+    <div class="container mt-5">
+      <div class="jumbotron mt-5">
+        <h1 class="display-4">Download Your Cleaned Files</h1>
+        <p class="lead">Your files have been processed. Download them below.</p>
+        <hr class="my-4">
+        {% if download_links %}
+          {% for name, link in download_links.items() %}
+            <a href="{{ link }}" class="btn btn-primary mb-2">Download {{ name.replace('_', ' ') }}</a><br>
+          {% endfor %}
+        {% else %}
+          {% if cleaned_filename %}
+            <a href="{{ url_for('download_file', filename=cleaned_filename) }}" class="btn btn-primary">Download Cleaned File</a>
+          {% endif %}
+          {% if card_cleaned_filename %}
+            <a href="{{ url_for('download_file', filename=card_cleaned_filename) }}" class="btn btn-secondary">Download Card File</a>
+          {% endif %}
+        {% endif %}
+        <hr class="my-4">
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Home</a>
+      </div>
+    </div>
+
+    <footer class="footer mt-auto py-3 bg-dark text-white">
+      <div class="container text-center">
+        <span>Raihan - 2025</span>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,25 @@
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Git
+.git
+.gitignore
+
+# Docker
+.dockerignore
+Dockerfile
+
+# virtualenv
+venv/
+.venv/
+
+# IDEs
+.idea/
+.vscode/
+
+# Other
+.DS_Store
