@@ -8,6 +8,7 @@ services:
     routes:
       - path: /
     healthCheckPath: /
+    startCommand: nginx -g 'daemon off;'
 
   - type: web
     name: django-app
@@ -15,6 +16,7 @@ services:
     env: docker
     ports:
       - 8000
+    startCommand: python manage.py runserver 0.0.0.0:8000
 
   - type: web
     name: flask-app
@@ -22,3 +24,4 @@ services:
     env: docker
     ports:
       - 5000
+    startCommand: gunicorn --bind 0.0.0.0:5000 app:app
