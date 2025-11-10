@@ -519,7 +519,7 @@ def upload_file(request):
                 download_links = {}
                 for key, path in processed_files.items():
                     filename = os.path.basename(path)
-                    download_links[key] = f"/processor/download/{filename}"
+                    download_links[key] = filename
 
                 return render(request, 'processor/upload.html', {'download_links': download_links, 'message': 'File processed successfully!'})
             except Exception as e:

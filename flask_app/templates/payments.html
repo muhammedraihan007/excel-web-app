@@ -1,87 +1,115 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <!-- Required meta tags -->
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+{% extends 'base.html' %}
 
-    <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+{% block title %}Upload Files - Receipt Processor{% endblock %}
 
-    <style>
-      body {
-        background-image: url('https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=2020&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D');
-        background-size: cover;
-        background-repeat: no-repeat;
-        background-attachment: fixed;
-        display: flex;
-        flex-direction: column;
-        min-height: 100vh;
-      }
-      .jumbotron {
-        background-color: rgba(255, 255, 255, 0.8);
-      }
-      .container {
-        flex: 1;
-      }
-    </style>
-  </head>
-  <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-      <a class="navbar-brand" href="/">Excel Cleaner</a>
-    </nav>
+{% block content %}
+<style>
+    @keyframes fadeInSlideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
 
-    <div class="container mt-5">
+    .card {
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        animation: fadeInSlideUp 0.5s ease-out forwards;
+    }
 
-      <div class="jumbotron mt-5">
-        <h1 class="display-4">Clean Your Excel Files</h1>
-        <p class="lead">Upload your daily Excel data to automatically clean it.</p>
-        <hr class="my-4">
-        <form action="/upload" method="post" enctype="multipart/form-data">
-          <div class="custom-file">
-            <input type="file" class="custom-file-input" id="customFile" name="file">
-            <label class="custom-file-label" for="customFile">Choose file</label>
-          </div>
-          <div class="form-group mt-3">
-            <label for="branch-select">Select Branch:</label>
-            <select class="form-control" id="branch-select" name="branch">
-              <option value="Aluva">Aluva</option>
-              <option value="Kalamassery">Kalamassery</option>
-              <option value="Vedimara">Vedimara</option>
-              <option value="Choondy">Choondy</option>
-            </select>
-          </div>
-          <div class="form-group mt-3">
-            <label for="bank-select">Replace "Wallet" with:</label>
-            <select class="form-control" id="bank-select" name="bank">
-              <option>SBI BANK</option>
-              <option>AXIS BANK</option>
-              <option>HDFC BANK</option>
-            </select>
-          </div>
-          <button type="submit" class="btn btn-primary mt-3">Upload and Clean</button>
-          <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Home</a>
-        </form>
-      </div>
+    .card-title {
+        color: #fff;
+        font-weight: 600;
+    }
+
+    .form-label {
+        color: #f8f9fa;
+    }
+
+    .btn-primary {
+        background: linear-gradient(to right, #2575fc, #6a11cb);
+        border: none;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+</style>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-lg">
+            <div class="card-body p-5">
+                <h1 class="card-title text-center mb-4">Receipt File Processor</h1>
+
+                {% if error %}
+                    <div class="alert alert-danger">{{ error }}</div>
+                {% endif %}
+
+                <form action="/flask/upload" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Receipt File</label>
+                        <input class="form-control" type="file" id="file" name="file" accept=".xlsx, .xls" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="branch-select" class="form-label">Select Branch</label>
+                        <select class="form-select" id="branch-select" name="branch">
+                            <option value="Aluva">Aluva</option>
+                            <option value="Kalamassery">Kalamassery</option>
+                            <option value="Vedimara">Vedimara</option>
+                            <option value="Choondy">Choondy</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="bank-select" class="form-label">Replace "Wallet" with:</label>
+                        <select class="form-select" id="bank-select" name="bank">
+                            <option>SBI BANK</option>
+                            <option>AXIS BANK</n>
+                            <option>HDFC BANK</option>
+                        </select>
+                    </div>
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg" id="upload-button">Upload and Process</button>
+                    </div>
+                    <div id="loading-spinner" class="text-center mt-3" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="text-white mt-2">Processing your file, please wait...</p>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
+</div>
 
-    <footer class="footer mt-auto py-3 bg-dark text-white">
-      <div class="container text-center">
-        <span>Raihan - 2025</span>
-      </div>
-    </footer>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const uploadForm = document.querySelector('form');
+        const uploadButton = document.getElementById('upload-button');
+        const loadingSpinner = document.getElementById('loading-spinner');
 
-    <!-- Optional JavaScript -->
-    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js" integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN" crossorigin="anonymous"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js" integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV" crossorigin="anonymous"></script>
-    <script>
-      // Add the following code if you want the name of the file appear on select
-      $(".custom-file-input").on("change", function() {
-        var fileName = $(this).val().split("\\").pop();
-        $(this).siblings(".custom-file-label").addClass("selected").html(fileName);
-      });
-    </script>
-  </body>
-</html>
+        uploadForm.addEventListener('submit', function() {
+            uploadButton.disabled = true;
+            loadingSpinner.style.display = 'block';
+        });
+
+        // Show selected filename
+        const fileInput = document.getElementById('file');
+        fileInput.addEventListener('change', function() {
+            const fileName = this.value.split('\\').pop();
+            const label = this.nextElementSibling;
+            if (label) {
+                label.innerHTML = fileName;
+            }
+        });
+    });
+</script>
+{% endblock %}
