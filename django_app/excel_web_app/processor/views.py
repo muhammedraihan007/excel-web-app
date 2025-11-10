@@ -7,19 +7,19 @@ from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 import pandas as pd
 
-# Define the UPLOAD_DIRECTORY within the app's directory
+
 UPLOAD_DIRECTORY = os.path.join(settings.BASE_DIR, 'processor', 'temp')
 
 def process_excel_file_logic(sales_file_path: str, receipt_file_path: str, output_directory: str, branch: str):
-    # 1. Read the Excel file
+    
     df = pd.read_excel(sales_file_path)
 
     if branch == "Kalamassery":
-        # Kalamassery branch logic
+        # Kalamassery
         if 'Notes' not in df.columns:
             raise ValueError("The uploaded file for the Kalamassery branch is missing the 'Notes' column.")
         
-        # 1. Split by 'Notes' column
+        
         df['Notes'] = df['Notes'].str.lower().str.strip()
         dental_df = df[df['Notes'] == 'dental'].copy()
         skin_df = df[df['Notes'] == 'skin'].copy()
@@ -27,7 +27,7 @@ def process_excel_file_logic(sales_file_path: str, receipt_file_path: str, outpu
 
         processed_files = {}
 
-        # Process Dental
+        # Dental
         if not dental_df.empty:
             # (Same as original logic)
             desired_columns = ['Date', 'Pt ID', 'Patient', 'Treatment Name', 'Doctor', 'Net Amount', 'Tax', 'Total', 'Invoice']
@@ -81,7 +81,7 @@ def process_excel_file_logic(sales_file_path: str, receipt_file_path: str, outpu
                 "Kalamassery_Dental_Rest": rest_output_path
             })
 
-        # Process Skin
+        # Skin
         if not skin_df.empty:
             desired_columns = ['Date', 'Pt ID', 'Patient', 'Treatment Name', 'Doctor', 'Net Amount', 'Tax', 'Total', 'Invoice']
             df_filtered = skin_df[desired_columns]
@@ -120,7 +120,7 @@ def process_excel_file_logic(sales_file_path: str, receipt_file_path: str, outpu
                 "Kalamassery_Skin_Other": other_output_path
             })
 
-        # Process Hair
+        # Hair
         if not hair_df.empty:
             desired_columns = ['Date', 'Pt ID', 'Patient', 'Treatment Name', 'Doctor', 'Net Amount', 'Tax', 'Total', 'Invoice']
             df_filtered = hair_df[desired_columns]
@@ -139,7 +139,7 @@ def process_excel_file_logic(sales_file_path: str, receipt_file_path: str, outpu
             df_modified['Cgst'] = df_modified['Cgst'].round(2)
             df_modified['Total Amount'] = df_modified['Base Value']
             
-            # Change Doctors Name to Clinic only for consultation
+            
             df_modified.loc[df_modified['Treatment Name'].str.contains('consultation', case=False, na=False), 'Doctors  Name'] = 'Clinic'
 
             hair_output_path = os.path.join(output_directory, "Kalamassery_Hair.xlsx")
@@ -160,7 +160,7 @@ def process_excel_file_logic(sales_file_path: str, receipt_file_path: str, outpu
 
         processed_files = {}
 
-        # Process Dental
+        # Dental
         if not dental_df.empty:
             # (Same as original logic)
             desired_columns = ['Date', 'Pt ID', 'Patient', 'Treatment Name', 'Doctor', 'Net Amount', 'Tax', 'Total', 'Invoice']
@@ -214,7 +214,7 @@ def process_excel_file_logic(sales_file_path: str, receipt_file_path: str, outpu
                 "Vedimara_Dental_Rest": rest_output_path
             })
 
-        # Process Economy
+        # Economy
         if not economy_df.empty:
             # (Same as original logic)
             desired_columns = ['Date', 'Pt ID', 'Patient', 'Treatment Name', 'Doctor', 'Net Amount', 'Tax', 'Total', 'Invoice']
@@ -268,7 +268,7 @@ def process_excel_file_logic(sales_file_path: str, receipt_file_path: str, outpu
                 "Vedimara_Economy_Rest": rest_output_path
             })
 
-        # Process Skin
+        # Skin
         if not skin_df.empty:
             desired_columns = ['Date', 'Pt ID', 'Patient', 'Treatment Name', 'Doctor', 'Net Amount', 'Tax', 'Total', 'Invoice']
             df_filtered = skin_df[desired_columns]
@@ -310,14 +310,14 @@ def process_excel_file_logic(sales_file_path: str, receipt_file_path: str, outpu
         return processed_files
 
     elif branch == "Choondy":
-        # Choondy branch logic
-        # Split by 'Doctor' column
+        # Choondy 
+        
         skin_df = df[df['Doctor'] == 'Redhina Raj'].copy()
         dental_df = df[df['Doctor'] != 'Redhina Raj'].copy()
 
         processed_files = {}
 
-        # Process Dental
+        # Dental
         if not dental_df.empty:
             desired_columns = ['Date', 'Pt ID', 'Patient', 'Treatment Name', 'Doctor', 'Net Amount', 'Tax', 'Total', 'Invoice']
             df_filtered = dental_df[desired_columns]
@@ -370,7 +370,7 @@ def process_excel_file_logic(sales_file_path: str, receipt_file_path: str, outpu
                 "Choondy_Dental_Rest": rest_output_path
             })
 
-        # Process Skin
+        # Skin
         if not skin_df.empty:
             desired_columns = ['Date', 'Pt ID', 'Patient', 'Treatment Name', 'Doctor', 'Net Amount', 'Tax', 'Total', 'Invoice']
             df_filtered = skin_df[desired_columns]
@@ -411,22 +411,22 @@ def process_excel_file_logic(sales_file_path: str, receipt_file_path: str, outpu
 
         return processed_files
 
-    else: # Original logic for Aluva and other branches
-        # 2. Keep only the specified columns
+    else: # Original logic 
+        
         desired_columns = ['Date', 'Pt ID', 'Patient', 'Treatment Name', 'Doctor', 'Net Amount', 'Tax', 'Total', 'Invoice']
         df_filtered = df[desired_columns]
 
-        # 3. Insert two blank columns between 'Net Amount' and 'Tax'
+       
         net_amount_idx = df_filtered.columns.get_loc('Net Amount')
         df_modified = df_filtered.copy()
         df_modified.insert(net_amount_idx + 1, 'Blank Col 1', [''] * len(df_modified))
         df_modified.insert(net_amount_idx + 2, 'Blank Col 2', [''] * len(df_modified))
 
-        # Rename columns
+        
         new_column_names = ['Date', 'ID', 'Name', 'Treatment Name', 'Doctors  Name', 'Total Amount', 'Base Value', 'Sgst', 'Cgst', 'Total inv', 'Invoice No']
         df_modified.columns = new_column_names
 
-        # 4. Split the data into three new Excel files based on 'Treatment Name'
+        
         consultation_df = df_modified[df_modified['Treatment Name'].str.contains('consultation', case=False, na=False)].copy()
         consultation_df['Base Value'] = pd.to_numeric(consultation_df['Total inv'], errors='coerce') / 1.18
         consultation_df['Sgst'] = consultation_df['Base Value'] * 0.09
