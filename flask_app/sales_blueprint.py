@@ -50,7 +50,7 @@ def process_excel_file_logic(input_file_path: str, output_directory: str):
 
 
     # For 'Ortho Bonding' related treatments
-    ortho_keywords = ['dental ortho bonding', 'ortho bonding new', 'debonding']
+    ortho_keywords = ['dental ortho bonding', 'ortho bonding new', 'debonding', 'VENEERS', 'Ortho Scaling']
     ortho_pattern = '|'.join(ortho_keywords)
     ortho_bonding_df = df_modified[df_modified['Treatment Name'].str.contains(ortho_pattern, case=False, na=False)].copy()
 
