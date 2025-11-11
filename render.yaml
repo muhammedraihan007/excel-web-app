@@ -1,7 +1,8 @@
 services:
   - type: web
     name: nginx-proxy
-    image: topmost7007/unified_project-nginx:latest
+    image:
+      url: topmost7007/unified_project-nginx:latest
     env: docker
     ports:
       - 80
@@ -12,7 +13,8 @@ services:
 
   - type: web
     name: django-app
-    image: topmost7007/unified_project-django-app:latest
+    image:
+      url: topmost7007/unified_project-django-app:latest
     env: docker
     ports:
       - 8000
@@ -20,7 +22,8 @@ services:
 
   - type: web
     name: flask-app
-    image: topmost7007/unified_project-flask-app:latest
+    image:
+      url: topmost7007/unified_project-flask-app:latest
     env: docker
     ports:
       - 5000
