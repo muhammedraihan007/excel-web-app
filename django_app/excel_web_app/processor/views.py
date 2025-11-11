@@ -49,7 +49,7 @@ def process_excel_file_logic(sales_file_path: str, receipt_file_path: str, outpu
             consultation_df['Total Amount'] = consultation_df['Base Value']
             consultation_df['Doctors  Name'] = 'Clinic'
 
-            ortho_keywords = ['dental ortho bonding', 'ortho bonding new', 'debonding']
+            ortho_keywords = ['dental ortho bonding', 'ortho bonding new', 'debonding', 'VENEERS', 'Ortho Scaling']
             ortho_pattern = '|'.join(ortho_keywords)
             ortho_bonding_df = df_modified[df_modified['Treatment Name'].str.contains(ortho_pattern, case=False, na=False)].copy()
             ortho_bonding_df['Base Value'] = pd.to_numeric(ortho_bonding_df['Total inv'], errors='coerce') / 1.05
@@ -182,7 +182,7 @@ def process_excel_file_logic(sales_file_path: str, receipt_file_path: str, outpu
             consultation_df['Total Amount'] = consultation_df['Base Value']
             consultation_df['Doctors  Name'] = 'Clinic'
 
-            ortho_keywords = ['dental ortho bonding', 'ortho bonding new', 'debonding']
+            ortho_keywords = ['dental ortho bonding', 'ortho bonding new', 'debonding', 'VENEERS', 'Ortho Scaling']
             ortho_pattern = '|'.join(ortho_keywords)
             ortho_bonding_df = df_modified[df_modified['Treatment Name'].str.contains(ortho_pattern, case=False, na=False)].copy()
             ortho_bonding_df['Base Value'] = pd.to_numeric(ortho_bonding_df['Total inv'], errors='coerce') / 1.05
@@ -338,7 +338,7 @@ def process_excel_file_logic(sales_file_path: str, receipt_file_path: str, outpu
             consultation_df['Total Amount'] = consultation_df['Base Value']
             consultation_df['Doctors  Name'] = 'Clinic'
 
-            ortho_keywords = ['dental ortho bonding', 'ortho bonding new', 'debonding']
+            ortho_keywords = ['dental ortho bonding', 'ortho bonding new', 'debonding', 'VENEERS', 'Ortho Scaling']
             ortho_pattern = '|'.join(ortho_keywords)
             ortho_bonding_df = df_modified[df_modified['Treatment Name'].str.contains(ortho_pattern, case=False, na=False)].copy()
             ortho_bonding_df['Base Value'] = pd.to_numeric(ortho_bonding_df['Total inv'], errors='coerce') / 1.05
@@ -437,7 +437,7 @@ def process_excel_file_logic(sales_file_path: str, receipt_file_path: str, outpu
         consultation_df['Total Amount'] = consultation_df['Base Value']
         consultation_df['Doctors  Name'] = 'Clinic'
 
-        ortho_keywords = ['dental ortho bonding', 'ortho bonding new', 'debonding']
+        ortho_keywords = ['dental ortho bonding', 'ortho bonding new', 'debonding', 'VENEERS', 'Ortho Scaling']
         ortho_pattern = '|'.join(ortho_keywords)
         ortho_bonding_df = df_modified[df_modified['Treatment Name'].str.contains(ortho_pattern, case=False, na=False)].copy()
         ortho_bonding_df['Base Value'] = pd.to_numeric(ortho_bonding_df['Total inv'], errors='coerce') / 1.05
