@@ -1,9 +1,9 @@
 services:
   - type: web
     name: nginx-proxy
-    image:
-      url: topmost7007/unified_project-nginx:latest
     env: docker
+    dockerfilePath: ./nginx/Dockerfile
+    dockerContext: ./nginx
     ports:
       - 80
     routes:
@@ -13,18 +13,18 @@ services:
 
   - type: web
     name: django-app
-    image:
-      url: topmost7007/unified_project-django-app:latest
     env: docker
+    dockerfilePath: ./django_app/excel_web_app/Dockerfile
+    dockerContext: ./django_app/excel_web_app
     ports:
       - 8000
     startCommand: python manage.py runserver 0.0.0.0:8000
 
   - type: web
     name: flask-app
-    image:
-      url: topmost7007/unified_project-flask-app:latest
     env: docker
+    dockerfilePath: ./flask_app/Dockerfile
+    dockerContext: ./flask_app
     ports:
       - 5000
     startCommand: gunicorn --bind 0.0.0.0:5000 app:app
