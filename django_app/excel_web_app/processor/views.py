@@ -1,6 +1,7 @@
 import os
 import shutil
 import uuid
+import json
 from django.shortcuts import render
 from django.http import HttpResponse, FileResponse, Http404
 from django.conf import settings
@@ -9,144 +10,161 @@ import pandas as pd
 
 
 UPLOAD_DIRECTORY = os.path.join(settings.BASE_DIR, 'processor', 'temp')
+CONFIG_PATH = os.path.join(settings.BASE_DIR, 'processor', 'config.json')
+
+with open(CONFIG_PATH, 'r') as f:
+    CONFIG = json.load(f)
+
+
+def process_dental_data(df_dental, output_directory, branch_name):
+    desired_columns = CONFIG['column_names']['desired']
+    df_filtered = df_dental[desired_columns]
+    net_amount_idx = df_filtered.columns.get_loc('Net Amount')
+    df_modified = df_filtered.copy()
+    df_modified.insert(net_amount_idx + 1, 'Blank Col 1', [''] * len(df_modified))
+    df_modified.insert(net_amount_idx + 2, 'Blank Col 2', [''] * len(df_modified))
+    new_column_names = CONFIG['column_names']['new']
+    df_modified.columns = new_column_names
+
+    consultation_df = df_modified[df_modified['Treatment Name'].str.contains('consultation', case=False, na=False)].copy()
+    consultation_tax = CONFIG['tax_rates']['consultation']
+    consultation_df['Base Value'] = pd.to_numeric(consultation_df['Total inv'], errors='coerce') / consultation_tax
+    consultation_df['Sgst'] = consultation_df['Base Value'] * (consultation_tax - 1) / 2
+    consultation_df['Cgst'] = consultation_df['Base Value'] * (consultation_tax - 1) / 2
+    consultation_df['Base Value'] = consultation_df['Base Value'].round(2)
+    consultation_df['Sgst'] = consultation_df['Sgst'].round(2)
+    consultation_df['Cgst'] = consultation_df['Cgst'].round(2)
+    consultation_df['Total Amount'] = consultation_df['Base Value']
+    consultation_df['Doctors  Name'] = 'Clinic'
+
+    ortho_keywords = CONFIG['ortho_keywords']
+    ortho_pattern = '|'.join(ortho_keywords)
+    ortho_bonding_df = df_modified[df_modified['Treatment Name'].str.contains(ortho_pattern, case=False, na=False)].copy()
+    ortho_tax = CONFIG['tax_rates']['ortho']
+    ortho_bonding_df['Base Value'] = pd.to_numeric(ortho_bonding_df['Total inv'], errors='coerce') / ortho_tax
+    ortho_bonding_df['Sgst'] = ortho_bonding_df['Base Value'] * (ortho_tax - 1) / 2
+    ortho_bonding_df['Cgst'] = ortho_bonding_df['Base Value'] * (ortho_tax - 1) / 2
+    ortho_bonding_df['Base Value'] = ortho_bonding_df['Base Value'].round(2)
+    ortho_bonding_df['Sgst'] = ortho_bonding_df['Sgst'].round(2)
+    ortho_bonding_df['Cgst'] = ortho_bonding_df['Cgst'].round(2)
+    ortho_bonding_df['Total Amount'] = ortho_bonding_df['Base Value']
+
+    consultation_mask = df_modified['Treatment Name'].str.contains('consultation', case=False, na=False)
+    ortho_mask = df_modified['Treatment Name'].str.contains(ortho_pattern, case=False, na=False)
+    matched_rows_mask = consultation_mask | ortho_mask
+    rest_df = df_modified[~matched_rows_mask].copy()
+    rest_df = rest_df[~rest_df['Date'].astype(str).str.contains('Count:', case=False, na=False)]
+    rest_df['Base Value'] = ''
+    rest_df['Sgst'] = ''
+    rest_df['Cgst'] = ''
+
+    consultation_output_path = os.path.join(output_directory, f"{branch_name}_Dental_Consultation.xlsx")
+    ortho_output_path = os.path.join(output_directory, f"{branch_name}_Dental_Ortho_Bonding.xlsx")
+    rest_output_path = os.path.join(output_directory, f"{branch_name}_Dental_Rest.xlsx")
+    consultation_df.to_excel(consultation_output_path, index=False)
+    ortho_bonding_df.to_excel(ortho_output_path, index=False)
+    rest_df.to_excel(rest_output_path, index=False)
+    
+    return {
+        f"{branch_name}_Dental_Consultation": consultation_output_path,
+        f"{branch_name}_Dental_Ortho_Bonding": ortho_output_path,
+        f"{branch_name}_Dental_Rest": rest_output_path
+    }
+
+
+def process_skin_data(df_skin, output_directory, branch_name):
+    desired_columns = CONFIG['column_names']['desired']
+    df_filtered = df_skin[desired_columns]
+    net_amount_idx = df_filtered.columns.get_loc('Net Amount')
+    df_modified = df_filtered.copy()
+    df_modified.insert(net_amount_idx + 1, 'Blank Col 1', [''] * len(df_modified))
+    df_modified.insert(net_amount_idx + 2, 'Blank Col 2', [''] * len(df_modified))
+    new_column_names = CONFIG['column_names']['new']
+    df_modified.columns = new_column_names
+
+    consultation_df = df_modified[df_modified['Treatment Name'].str.contains('consultation', case=False, na=False)].copy()
+    consultation_tax = CONFIG['tax_rates']['consultation']
+    consultation_df['Base Value'] = pd.to_numeric(consultation_df['Total inv'], errors='coerce') / consultation_tax
+    consultation_df['Sgst'] = consultation_df['Base Value'] * (consultation_tax - 1) / 2
+    consultation_df['Cgst'] = consultation_df['Base Value'] * (consultation_tax - 1) / 2
+    consultation_df['Base Value'] = consultation_df['Base Value'].round(2)
+    consultation_df['Sgst'] = consultation_df['Sgst'].round(2)
+    consultation_df['Cgst'] = consultation_df['Cgst'].round(2)
+    consultation_df['Total Amount'] = consultation_df['Base Value']
+    consultation_df['Doctors  Name'] = 'Clinic'
+
+    other_treatments_df = df_modified[~df_modified['Treatment Name'].str.contains('consultation', case=False, na=False)].copy()
+    ortho_tax = CONFIG['tax_rates']['ortho']
+    other_treatments_df['Base Value'] = pd.to_numeric(other_treatments_df['Total inv'], errors='coerce') / ortho_tax
+    other_treatments_df['Sgst'] = other_treatments_df['Base Value'] * (ortho_tax - 1) / 2
+    other_treatments_df['Cgst'] = other_treatments_df['Base Value'] * (ortho_tax - 1) / 2
+    other_treatments_df['Base Value'] = other_treatments_df['Base Value'].round(2)
+    other_treatments_df['Sgst'] = other_treatments_df['Sgst'].round(2)
+    other_treatments_df['Cgst'] = other_treatments_df['Cgst'].round(2)
+    other_treatments_df['Total Amount'] = other_treatments_df['Base Value']
+    
+    consultation_output_path = os.path.join(output_directory, f"{branch_name}_Skin_Consultation.xlsx")
+    other_output_path = os.path.join(output_directory, f"{branch_name}_Skin_Other.xlsx")
+    consultation_df.to_excel(consultation_output_path, index=False)
+    other_treatments_df.to_excel(other_output_path, index=False)
+    
+    return {
+        f"{branch_name}_Skin_Consultation": consultation_output_path,
+        f"{branch_name}_Skin_Other": other_output_path
+    }
+
+
+def process_hair_data(df_hair, output_directory, branch_name):
+    desired_columns = CONFIG['column_names']['desired']
+    df_filtered = df_hair[desired_columns]
+    net_amount_idx = df_filtered.columns.get_loc('Net Amount')
+    df_modified = df_filtered.copy()
+    df_modified.insert(net_amount_idx + 1, 'Blank Col 1', [''] * len(df_modified))
+    df_modified.insert(net_amount_idx + 2, 'Blank Col 2', [''] * len(df_modified))
+    new_column_names = CONFIG['column_names']['new']
+    df_modified.columns = new_column_names
+
+    hair_tax = CONFIG['tax_rates']['hair']
+    df_modified['Base Value'] = pd.to_numeric(df_modified['Total inv'], errors='coerce') / hair_tax
+    df_modified['Sgst'] = df_modified['Base Value'] * (hair_tax - 1) / 2
+    df_modified['Cgst'] = df_modified['Base Value'] * (hair_tax - 1) / 2
+    df_modified['Base Value'] = df_modified['Base Value'].round(2)
+    df_modified['Sgst'] = df_modified['Sgst'].round(2)
+    df_modified['Cgst'] = df_modified['Cgst'].round(2)
+    df_modified['Total Amount'] = df_modified['Base Value']
+    
+    df_modified.loc[df_modified['Treatment Name'].str.contains('consultation', case=False, na=False), 'Doctors  Name'] = 'Clinic'
+
+    hair_output_path = os.path.join(output_directory, f"{branch_name}_Hair.xlsx")
+    df_modified.to_excel(hair_output_path, index=False)
+    
+    return {f"{branch_name}_Hair": hair_output_path}
+
+
+def process_economy_data(df_economy, output_directory, branch_name):
+    return process_dental_data(df_economy, output_directory, f"{branch_name}_Economy")
+
 
 def process_excel_file_logic(sales_file_path: str, receipt_file_path: str, output_directory: str, branch: str):
     
     df = pd.read_excel(sales_file_path)
+    processed_files = {}
 
     if branch == "Kalamassery":
-        # Kalamassery
         if 'Notes' not in df.columns:
             raise ValueError("The uploaded file for the Kalamassery branch is missing the 'Notes' column.")
-        
         
         df['Notes'] = df['Notes'].str.lower().str.strip()
         dental_df = df[df['Notes'] == 'dental'].copy()
         skin_df = df[df['Notes'] == 'skin'].copy()
         hair_df = df[df['Notes'] == 'hair'].copy()
 
-        processed_files = {}
-
-        # Dental
         if not dental_df.empty:
-            # (Same as original logic)
-            desired_columns = ['Date', 'Pt ID', 'Patient', 'Treatment Name', 'Doctor', 'Net Amount', 'Tax', 'Total', 'Invoice']
-            df_filtered = dental_df[desired_columns]
-            net_amount_idx = df_filtered.columns.get_loc('Net Amount')
-            df_modified = df_filtered.copy()
-            df_modified.insert(net_amount_idx + 1, 'Blank Col 1', [''] * len(df_modified))
-            df_modified.insert(net_amount_idx + 2, 'Blank Col 2', [''] * len(df_modified))
-            new_column_names = ['Date', 'ID', 'Name', 'Treatment Name', 'Doctors  Name', 'Total Amount', 'Base Value', 'Sgst', 'Cgst', 'Total inv', 'Invoice No']
-            df_modified.columns = new_column_names
-
-            consultation_df = df_modified[df_modified['Treatment Name'].str.contains('consultation', case=False, na=False)].copy()
-            consultation_df['Base Value'] = pd.to_numeric(consultation_df['Total inv'], errors='coerce') / 1.18
-            consultation_df['Sgst'] = consultation_df['Base Value'] * 0.09
-            consultation_df['Cgst'] = consultation_df['Base Value'] * 0.09
-            consultation_df['Base Value'] = consultation_df['Base Value'].round(2)
-            consultation_df['Sgst'] = consultation_df['Sgst'].round(2)
-            consultation_df['Cgst'] = consultation_df['Cgst'].round(2)
-            consultation_df['Total Amount'] = consultation_df['Base Value']
-            consultation_df['Doctors  Name'] = 'Clinic'
-
-            ortho_keywords = ['dental ortho bonding', 'ortho bonding new', 'debonding', 'VENEERS', 'Ortho Scaling']
-            ortho_pattern = '|'.join(ortho_keywords)
-            ortho_bonding_df = df_modified[df_modified['Treatment Name'].str.contains(ortho_pattern, case=False, na=False)].copy()
-            ortho_bonding_df['Base Value'] = pd.to_numeric(ortho_bonding_df['Total inv'], errors='coerce') / 1.05
-            ortho_bonding_df['Sgst'] = ortho_bonding_df['Base Value'] * 0.025
-            ortho_bonding_df['Cgst'] = ortho_bonding_df['Base Value'] * 0.025
-            ortho_bonding_df['Base Value'] = ortho_bonding_df['Base Value'].round(2)
-            ortho_bonding_df['Sgst'] = ortho_bonding_df['Sgst'].round(2)
-            ortho_bonding_df['Cgst'] = ortho_bonding_df['Cgst'].round(2)
-            ortho_bonding_df['Total Amount'] = ortho_bonding_df['Base Value']
-
-            consultation_mask = df_modified['Treatment Name'].str.contains('consultation', case=False, na=False)
-            ortho_mask = df_modified['Treatment Name'].str.contains(ortho_pattern, case=False, na=False)
-            matched_rows_mask = consultation_mask | ortho_mask
-            rest_df = df_modified[~matched_rows_mask].copy()
-            rest_df = rest_df[~rest_df['Date'].astype(str).str.contains('Count:', case=False, na=False)]
-            rest_df['Base Value'] = ''
-            rest_df['Sgst'] = ''
-            rest_df['Cgst'] = ''
-
-            consultation_output_path = os.path.join(output_directory, "Kalamassery_Dental_Consultation.xlsx")
-            ortho_output_path = os.path.join(output_directory, "Kalamassery_Dental_Ortho_Bonding.xlsx")
-            rest_output_path = os.path.join(output_directory, "Kalamassery_Dental_Rest.xlsx")
-            consultation_df.to_excel(consultation_output_path, index=False)
-            ortho_bonding_df.to_excel(ortho_output_path, index=False)
-            rest_df.to_excel(rest_output_path, index=False)
-            processed_files.update({
-                "Kalamassery_Dental_Consultation": consultation_output_path,
-                "Kalamassery_Dental_Ortho_Bonding": ortho_output_path,
-                "Kalamassery_Dental_Rest": rest_output_path
-            })
-
-        # Skin
+            processed_files.update(process_dental_data(dental_df, output_directory, "Kalamassery"))
         if not skin_df.empty:
-            desired_columns = ['Date', 'Pt ID', 'Patient', 'Treatment Name', 'Doctor', 'Net Amount', 'Tax', 'Total', 'Invoice']
-            df_filtered = skin_df[desired_columns]
-            net_amount_idx = df_filtered.columns.get_loc('Net Amount')
-            df_modified = df_filtered.copy()
-            df_modified.insert(net_amount_idx + 1, 'Blank Col 1', [''] * len(df_modified))
-            df_modified.insert(net_amount_idx + 2, 'Blank Col 2', [''] * len(df_modified))
-            new_column_names = ['Date', 'ID', 'Name', 'Treatment Name', 'Doctors  Name', 'Total Amount', 'Base Value', 'Sgst', 'Cgst', 'Total inv', 'Invoice No']
-            df_modified.columns = new_column_names
-
-            consultation_df = df_modified[df_modified['Treatment Name'].str.contains('consultation', case=False, na=False)].copy()
-            consultation_df['Base Value'] = pd.to_numeric(consultation_df['Total inv'], errors='coerce') / 1.18
-            consultation_df['Sgst'] = consultation_df['Base Value'] * 0.09
-            consultation_df['Cgst'] = consultation_df['Base Value'] * 0.09
-            consultation_df['Base Value'] = consultation_df['Base Value'].round(2)
-            consultation_df['Sgst'] = consultation_df['Sgst'].round(2)
-            consultation_df['Cgst'] = consultation_df['Cgst'].round(2)
-            consultation_df['Total Amount'] = consultation_df['Base Value']
-            consultation_df['Doctors  Name'] = 'Clinic'
-
-            other_treatments_df = df_modified[~df_modified['Treatment Name'].str.contains('consultation', case=False, na=False)].copy()
-            other_treatments_df['Base Value'] = pd.to_numeric(other_treatments_df['Total inv'], errors='coerce') / 1.05
-            other_treatments_df['Sgst'] = other_treatments_df['Base Value'] * 0.025
-            other_treatments_df['Cgst'] = other_treatments_df['Base Value'] * 0.025
-            other_treatments_df['Base Value'] = other_treatments_df['Base Value'].round(2)
-            other_treatments_df['Sgst'] = other_treatments_df['Sgst'].round(2)
-            other_treatments_df['Cgst'] = other_treatments_df['Cgst'].round(2)
-            other_treatments_df['Total Amount'] = other_treatments_df['Base Value']
-            
-            consultation_output_path = os.path.join(output_directory, "Kalamassery_Skin_Consultation.xlsx")
-            other_output_path = os.path.join(output_directory, "Kalamassery_Skin_Other.xlsx")
-            consultation_df.to_excel(consultation_output_path, index=False)
-            other_treatments_df.to_excel(other_output_path, index=False)
-            processed_files.update({
-                "Kalamassery_Skin_Consultation": consultation_output_path,
-                "Kalamassery_Skin_Other": other_output_path
-            })
-
-        # Hair
+            processed_files.update(process_skin_data(skin_df, output_directory, "Kalamassery"))
         if not hair_df.empty:
-            desired_columns = ['Date', 'Pt ID', 'Patient', 'Treatment Name', 'Doctor', 'Net Amount', 'Tax', 'Total', 'Invoice']
-            df_filtered = hair_df[desired_columns]
-            net_amount_idx = df_filtered.columns.get_loc('Net Amount')
-            df_modified = df_filtered.copy()
-            df_modified.insert(net_amount_idx + 1, 'Blank Col 1', [''] * len(df_modified))
-            df_modified.insert(net_amount_idx + 2, 'Blank Col 2', [''] * len(df_modified))
-            new_column_names = ['Date', 'ID', 'Name', 'Treatment Name', 'Doctors  Name', 'Total Amount', 'Base Value', 'Sgst', 'Cgst', 'Total inv', 'Invoice No']
-            df_modified.columns = new_column_names
-
-            df_modified['Base Value'] = pd.to_numeric(df_modified['Total inv'], errors='coerce') / 1.18
-            df_modified['Sgst'] = df_modified['Base Value'] * 0.09
-            df_modified['Cgst'] = df_modified['Base Value'] * 0.09
-            df_modified['Base Value'] = df_modified['Base Value'].round(2)
-            df_modified['Sgst'] = df_modified['Sgst'].round(2)
-            df_modified['Cgst'] = df_modified['Cgst'].round(2)
-            df_modified['Total Amount'] = df_modified['Base Value']
-            
-            
-            df_modified.loc[df_modified['Treatment Name'].str.contains('consultation', case=False, na=False), 'Doctors  Name'] = 'Clinic'
-
-            hair_output_path = os.path.join(output_directory, "Kalamassery_Hair.xlsx")
-            df_modified.to_excel(hair_output_path, index=False)
-            processed_files["Kalamassery_Hair"] = hair_output_path
-
-        return processed_files
+            processed_files.update(process_hair_data(hair_df, output_directory, "Kalamassery"))
 
     elif branch == "Vedimara":
         receipt_df = pd.read_excel(receipt_file_path)
@@ -158,317 +176,41 @@ def process_excel_file_logic(sales_file_path: str, receipt_file_path: str, outpu
         economy_df = merged_df[merged_df['Notes_y'] == 'economy'].copy()
         skin_df = merged_df[merged_df['Notes_y'] == 'skin'].copy()
 
-        processed_files = {}
-
-        # Dental
         if not dental_df.empty:
-            # (Same as original logic)
-            desired_columns = ['Date', 'Pt ID', 'Patient', 'Treatment Name', 'Doctor', 'Net Amount', 'Tax', 'Total', 'Invoice']
-            df_filtered = dental_df[desired_columns]
-            net_amount_idx = df_filtered.columns.get_loc('Net Amount')
-            df_modified = df_filtered.copy()
-            df_modified.insert(net_amount_idx + 1, 'Blank Col 1', [''] * len(df_modified))
-            df_modified.insert(net_amount_idx + 2, 'Blank Col 2', [''] * len(df_modified))
-            new_column_names = ['Date', 'ID', 'Name', 'Treatment Name', 'Doctors  Name', 'Total Amount', 'Base Value', 'Sgst', 'Cgst', 'Total inv', 'Invoice No']
-            df_modified.columns = new_column_names
-
-            consultation_df = df_modified[df_modified['Treatment Name'].str.contains('consultation', case=False, na=False)].copy()
-            consultation_df['Base Value'] = pd.to_numeric(consultation_df['Total inv'], errors='coerce') / 1.18
-            consultation_df['Sgst'] = consultation_df['Base Value'] * 0.09
-            consultation_df['Cgst'] = consultation_df['Base Value'] * 0.09
-            consultation_df['Base Value'] = consultation_df['Base Value'].round(2)
-            consultation_df['Sgst'] = consultation_df['Sgst'].round(2)
-            consultation_df['Cgst'] = consultation_df['Cgst'].round(2)
-            consultation_df['Total Amount'] = consultation_df['Base Value']
-            consultation_df['Doctors  Name'] = 'Clinic'
-
-            ortho_keywords = ['dental ortho bonding', 'ortho bonding new', 'debonding', 'VENEERS', 'Ortho Scaling']
-            ortho_pattern = '|'.join(ortho_keywords)
-            ortho_bonding_df = df_modified[df_modified['Treatment Name'].str.contains(ortho_pattern, case=False, na=False)].copy()
-            ortho_bonding_df['Base Value'] = pd.to_numeric(ortho_bonding_df['Total inv'], errors='coerce') / 1.05
-            ortho_bonding_df['Sgst'] = ortho_bonding_df['Base Value'] * 0.025
-            ortho_bonding_df['Cgst'] = ortho_bonding_df['Base Value'] * 0.025
-            ortho_bonding_df['Base Value'] = ortho_bonding_df['Base Value'].round(2)
-            ortho_bonding_df['Sgst'] = ortho_bonding_df['Sgst'].round(2)
-            ortho_bonding_df['Cgst'] = ortho_bonding_df['Cgst'].round(2)
-            ortho_bonding_df['Total Amount'] = ortho_bonding_df['Base Value']
-
-            consultation_mask = df_modified['Treatment Name'].str.contains('consultation', case=False, na=False)
-            ortho_mask = df_modified['Treatment Name'].str.contains(ortho_pattern, case=False, na=False)
-            matched_rows_mask = consultation_mask | ortho_mask
-            rest_df = df_modified[~matched_rows_mask].copy()
-            rest_df = rest_df[~rest_df['Date'].astype(str).str.contains('Count:', case=False, na=False)]
-            rest_df['Base Value'] = ''
-            rest_df['Sgst'] = ''
-            rest_df['Cgst'] = ''
-
-            consultation_output_path = os.path.join(output_directory, "Vedimara_Dental_Consultation.xlsx")
-            ortho_output_path = os.path.join(output_directory, "Vedimara_Dental_Ortho_Bonding.xlsx")
-            rest_output_path = os.path.join(output_directory, "Vedimara_Dental_Rest.xlsx")
-            consultation_df.to_excel(consultation_output_path, index=False)
-            ortho_bonding_df.to_excel(ortho_output_path, index=False)
-            rest_df.to_excel(rest_output_path, index=False)
-            processed_files.update({
-                "Vedimara_Dental_Consultation": consultation_output_path,
-                "Vedimara_Dental_Ortho_Bonding": ortho_output_path,
-                "Vedimara_Dental_Rest": rest_output_path
-            })
-
-        # Economy
+            processed_files.update(process_dental_data(dental_df, output_directory, "Vedimara"))
         if not economy_df.empty:
-            # (Same as original logic)
-            desired_columns = ['Date', 'Pt ID', 'Patient', 'Treatment Name', 'Doctor', 'Net Amount', 'Tax', 'Total', 'Invoice']
-            df_filtered = economy_df[desired_columns]
-            net_amount_idx = df_filtered.columns.get_loc('Net Amount')
-            df_modified = df_filtered.copy()
-            df_modified.insert(net_amount_idx + 1, 'Blank Col 1', [''] * len(df_modified))
-            df_modified.insert(net_amount_idx + 2, 'Blank Col 2', [''] * len(df_modified))
-            new_column_names = ['Date', 'ID', 'Name', 'Treatment Name', 'Doctors  Name', 'Total Amount', 'Base Value', 'Sgst', 'Cgst', 'Total inv', 'Invoice No']
-            df_modified.columns = new_column_names
-
-            consultation_df = df_modified[df_modified['Treatment Name'].str.contains('consultation', case=False, na=False)].copy()
-            consultation_df['Base Value'] = pd.to_numeric(consultation_df['Total inv'], errors='coerce') / 1.18
-            consultation_df['Sgst'] = consultation_df['Base Value'] * 0.09
-            consultation_df['Cgst'] = consultation_df['Base Value'] * 0.09
-            consultation_df['Base Value'] = consultation_df['Base Value'].round(2)
-            consultation_df['Sgst'] = consultation_df['Sgst'].round(2)
-            consultation_df['Cgst'] = consultation_df['Cgst'].round(2)
-            consultation_df['Total Amount'] = consultation_df['Base Value']
-            consultation_df['Doctors  Name'] = 'Clinic'
-
-            ortho_keywords = ['dental ortho bonding', 'ortho bonding new', 'debonding']
-            ortho_pattern = '|'.join(ortho_keywords)
-            ortho_bonding_df = df_modified[df_modified['Treatment Name'].str.contains(ortho_pattern, case=False, na=False)].copy()
-            ortho_bonding_df['Base Value'] = pd.to_numeric(ortho_bonding_df['Total inv'], errors='coerce') / 1.05
-            ortho_bonding_df['Sgst'] = ortho_bonding_df['Base Value'] * 0.025
-            ortho_bonding_df['Cgst'] = ortho_bonding_df['Base Value'] * 0.025
-            ortho_bonding_df['Base Value'] = ortho_bonding_df['Base Value'].round(2)
-            ortho_bonding_df['Sgst'] = ortho_bonding_df['Sgst'].round(2)
-            ortho_bonding_df['Cgst'] = ortho_bonding_df['Cgst'].round(2)
-            ortho_bonding_df['Total Amount'] = ortho_bonding_df['Base Value']
-
-            consultation_mask = df_modified['Treatment Name'].str.contains('consultation', case=False, na=False)
-            ortho_mask = df_modified['Treatment Name'].str.contains(ortho_pattern, case=False, na=False)
-            matched_rows_mask = consultation_mask | ortho_mask
-            rest_df = df_modified[~matched_rows_mask].copy()
-            rest_df = rest_df[~rest_df['Date'].astype(str).str.contains('Count:', case=False, na=False)]
-            rest_df['Base Value'] = ''
-            rest_df['Sgst'] = ''
-            rest_df['Cgst'] = ''
-
-            consultation_output_path = os.path.join(output_directory, "Vedimara_Economy_Consultation.xlsx")
-            ortho_output_path = os.path.join(output_directory, "Vedimara_Economy_Ortho_Bonding.xlsx")
-            rest_output_path = os.path.join(output_directory, "Vedimara_Economy_Rest.xlsx")
-            consultation_df.to_excel(consultation_output_path, index=False)
-            ortho_bonding_df.to_excel(ortho_output_path, index=False)
-            rest_df.to_excel(rest_output_path, index=False)
-            processed_files.update({
-                "Vedimara_Economy_Consultation": consultation_output_path,
-                "Vedimara_Economy_Ortho_Bonding": ortho_output_path,
-                "Vedimara_Economy_Rest": rest_output_path
-            })
-
-        # Skin
+            processed_files.update(process_economy_data(economy_df, output_directory, "Vedimara"))
         if not skin_df.empty:
-            desired_columns = ['Date', 'Pt ID', 'Patient', 'Treatment Name', 'Doctor', 'Net Amount', 'Tax', 'Total', 'Invoice']
-            df_filtered = skin_df[desired_columns]
-            net_amount_idx = df_filtered.columns.get_loc('Net Amount')
-            df_modified = df_filtered.copy()
-            df_modified.insert(net_amount_idx + 1, 'Blank Col 1', [''] * len(df_modified))
-            df_modified.insert(net_amount_idx + 2, 'Blank Col 2', [''] * len(df_modified))
-            new_column_names = ['Date', 'ID', 'Name', 'Treatment Name', 'Doctors  Name', 'Total Amount', 'Base Value', 'Sgst', 'Cgst', 'Total inv', 'Invoice No']
-            df_modified.columns = new_column_names
-
-            consultation_df = df_modified[df_modified['Treatment Name'].str.contains('consultation', case=False, na=False)].copy()
-            consultation_df['Base Value'] = pd.to_numeric(consultation_df['Total inv'], errors='coerce') / 1.18
-            consultation_df['Sgst'] = consultation_df['Base Value'] * 0.09
-            consultation_df['Cgst'] = consultation_df['Base Value'] * 0.09
-            consultation_df['Base Value'] = consultation_df['Base Value'].round(2)
-            consultation_df['Sgst'] = consultation_df['Sgst'].round(2)
-            consultation_df['Cgst'] = consultation_df['Cgst'].round(2)
-            consultation_df['Total Amount'] = consultation_df['Base Value']
-            consultation_df['Doctors  Name'] = 'Clinic'
-
-            other_treatments_df = df_modified[~df_modified['Treatment Name'].str.contains('consultation', case=False, na=False)].copy()
-            other_treatments_df['Base Value'] = pd.to_numeric(other_treatments_df['Total inv'], errors='coerce') / 1.05
-            other_treatments_df['Sgst'] = other_treatments_df['Base Value'] * 0.025
-            other_treatments_df['Cgst'] = other_treatments_df['Base Value'] * 0.025
-            other_treatments_df['Base Value'] = other_treatments_df['Base Value'].round(2)
-            other_treatments_df['Sgst'] = other_treatments_df['Sgst'].round(2)
-            other_treatments_df['Cgst'] = other_treatments_df['Cgst'].round(2)
-            other_treatments_df['Total Amount'] = other_treatments_df['Base Value']
-            
-            consultation_output_path = os.path.join(output_directory, "Vedimara_Skin_Consultation.xlsx")
-            other_output_path = os.path.join(output_directory, "Vedimara_Skin_Other.xlsx")
-            consultation_df.to_excel(consultation_output_path, index=False)
-            other_treatments_df.to_excel(other_output_path, index=False)
-            processed_files.update({
-                "Vedimara_Skin_Consultation": consultation_output_path,
-                "Vedimara_Skin_Other": other_output_path
-            })
-
-        return processed_files
+            processed_files.update(process_skin_data(skin_df, output_directory, "Vedimara"))
 
     elif branch == "Choondy":
-        # Choondy 
-        
         skin_df = df[df['Doctor'] == 'Redhina Raj'].copy()
         dental_df = df[df['Doctor'] != 'Redhina Raj'].copy()
 
-        processed_files = {}
-
-        # Dental
         if not dental_df.empty:
-            desired_columns = ['Date', 'Pt ID', 'Patient', 'Treatment Name', 'Doctor', 'Net Amount', 'Tax', 'Total', 'Invoice']
-            df_filtered = dental_df[desired_columns]
-            net_amount_idx = df_filtered.columns.get_loc('Net Amount')
-            df_modified = df_filtered.copy()
-            df_modified.insert(net_amount_idx + 1, 'Blank Col 1', [''] * len(df_modified))
-            df_modified.insert(net_amount_idx + 2, 'Blank Col 2', [''] * len(df_modified))
-            new_column_names = ['Date', 'ID', 'Name', 'Treatment Name', 'Doctors  Name', 'Total Amount', 'Base Value', 'Sgst', 'Cgst', 'Total inv', 'Invoice No']
-            df_modified.columns = new_column_names
-
-            consultation_df = df_modified[df_modified['Treatment Name'].str.contains('consultation', case=False, na=False)].copy()
-            consultation_df['Base Value'] = pd.to_numeric(consultation_df['Total inv'], errors='coerce') / 1.18
-            consultation_df['Sgst'] = consultation_df['Base Value'] * 0.09
-            consultation_df['Cgst'] = consultation_df['Base Value'] * 0.09
-            consultation_df['Base Value'] = consultation_df['Base Value'].round(2)
-            consultation_df['Sgst'] = consultation_df['Sgst'].round(2)
-            consultation_df['Cgst'] = consultation_df['Cgst'].round(2)
-            consultation_df['Total Amount'] = consultation_df['Base Value']
-            consultation_df['Doctors  Name'] = 'Clinic'
-
-            ortho_keywords = ['dental ortho bonding', 'ortho bonding new', 'debonding', 'VENEERS', 'Ortho Scaling']
-            ortho_pattern = '|'.join(ortho_keywords)
-            ortho_bonding_df = df_modified[df_modified['Treatment Name'].str.contains(ortho_pattern, case=False, na=False)].copy()
-            ortho_bonding_df['Base Value'] = pd.to_numeric(ortho_bonding_df['Total inv'], errors='coerce') / 1.05
-            ortho_bonding_df['Sgst'] = ortho_bonding_df['Base Value'] * 0.025
-            ortho_bonding_df['Cgst'] = ortho_bonding_df['Base Value'] * 0.025
-            ortho_bonding_df['Base Value'] = ortho_bonding_df['Base Value'].round(2)
-            ortho_bonding_df['Sgst'] = ortho_bonding_df['Sgst'].round(2)
-            ortho_bonding_df['Cgst'] = ortho_bonding_df['Cgst'].round(2)
-            ortho_bonding_df['Total Amount'] = ortho_bonding_df['Base Value']
-
-            consultation_mask = df_modified['Treatment Name'].str.contains('consultation', case=False, na=False)
-            ortho_mask = df_modified['Treatment Name'].str.contains(ortho_pattern, case=False, na=False)
-            matched_rows_mask = consultation_mask | ortho_mask
-            rest_df = df_modified[~matched_rows_mask].copy()
-            rest_df = rest_df[~rest_df['Date'].astype(str).str.contains('Count:', case=False, na=False)]
-            rest_df['Base Value'] = ''
-            rest_df['Sgst'] = ''
-            rest_df['Cgst'] = ''
-
-            consultation_output_path = os.path.join(output_directory, "Choondy_Dental_Consultation.xlsx")
-            ortho_output_path = os.path.join(output_directory, "Choondy_Dental_Ortho_Bonding.xlsx")
-            rest_output_path = os.path.join(output_directory, "Choondy_Dental_Rest.xlsx")
-            consultation_df.to_excel(consultation_output_path, index=False)
-            ortho_bonding_df.to_excel(ortho_output_path, index=False)
-            rest_df.to_excel(rest_output_path, index=False)
-            processed_files.update({
-                "Choondy_Dental_Consultation": consultation_output_path,
-                "Choondy_Dental_Ortho_Bonding": ortho_output_path,
-                "Choondy_Dental_Rest": rest_output_path
-            })
-
-        # Skin
+            processed_files.update(process_dental_data(dental_df, output_directory, "Choondy"))
         if not skin_df.empty:
-            desired_columns = ['Date', 'Pt ID', 'Patient', 'Treatment Name', 'Doctor', 'Net Amount', 'Tax', 'Total', 'Invoice']
-            df_filtered = skin_df[desired_columns]
-            net_amount_idx = df_filtered.columns.get_loc('Net Amount')
-            df_modified = df_filtered.copy()
-            df_modified.insert(net_amount_idx + 1, 'Blank Col 1', [''] * len(df_modified))
-            df_modified.insert(net_amount_idx + 2, 'Blank Col 2', [''] * len(df_modified))
-            new_column_names = ['Date', 'ID', 'Name', 'Treatment Name', 'Doctors  Name', 'Total Amount', 'Base Value', 'Sgst', 'Cgst', 'Total inv', 'Invoice No']
-            df_modified.columns = new_column_names
+            processed_files.update(process_skin_data(skin_df, output_directory, "Choondy"))
+        
+    elif branch == "Aluva":
+        skin_df = df[df['Doctor'] == 'New Doctor'].copy()
+        dental_df = df[df['Doctor'] != 'New Doctor'].copy()
 
-            consultation_df = df_modified[df_modified['Treatment Name'].str.contains('consultation', case=False, na=False)].copy()
-            consultation_df['Base Value'] = pd.to_numeric(consultation_df['Total inv'], errors='coerce') / 1.18
-            consultation_df['Sgst'] = consultation_df['Base Value'] * 0.09
-            consultation_df['Cgst'] = consultation_df['Base Value'] * 0.09
-            consultation_df['Base Value'] = consultation_df['Base Value'].round(2)
-            consultation_df['Sgst'] = consultation_df['Sgst'].round(2)
-            consultation_df['Cgst'] = consultation_df['Cgst'].round(2)
-            consultation_df['Total Amount'] = consultation_df['Base Value']
-            consultation_df['Doctors  Name'] = 'Clinic'
-
-            other_treatments_df = df_modified[~df_modified['Treatment Name'].str.contains('consultation', case=False, na=False)].copy()
-            other_treatments_df['Base Value'] = pd.to_numeric(other_treatments_df['Total inv'], errors='coerce') / 1.05
-            other_treatments_df['Sgst'] = other_treatments_df['Base Value'] * 0.025
-            other_treatments_df['Cgst'] = other_treatments_df['Base Value'] * 0.025
-            other_treatments_df['Base Value'] = other_treatments_df['Base Value'].round(2)
-            other_treatments_df['Sgst'] = other_treatments_df['Sgst'].round(2)
-            other_treatments_df['Cgst'] = other_treatments_df['Cgst'].round(2)
-            other_treatments_df['Total Amount'] = other_treatments_df['Base Value']
-            
-            consultation_output_path = os.path.join(output_directory, "Choondy_Skin_Consultation.xlsx")
-            other_output_path = os.path.join(output_directory, "Choondy_Skin_Other.xlsx")
-            consultation_df.to_excel(consultation_output_path, index=False)
-            other_treatments_df.to_excel(other_output_path, index=False)
-            processed_files.update({
-                "Choondy_Skin_Consultation": consultation_output_path,
-                "Choondy_Skin_Other": other_output_path
-            })
-
-        return processed_files
-
+        if not dental_df.empty:
+            processed_files.update(process_dental_data(dental_df, output_directory, "Aluva"))
+        if not skin_df.empty:
+            processed_files.update(process_skin_data(skin_df, output_directory, "Aluva"))
+    
+    elif branch == "استلام":
+        processed_files.update(process_dental_data(df, output_directory, "استلام"))
+    elif branch == "paravoor":
+        processed_files.update(process_dental_data(df, output_directory, "paravoor"))
+        
     else: # Original logic 
-        
-        desired_columns = ['Date', 'Pt ID', 'Patient', 'Treatment Name', 'Doctor', 'Net Amount', 'Tax', 'Total', 'Invoice']
-        df_filtered = df[desired_columns]
+        processed_files.update(process_dental_data(df, output_directory, "Treatments_Done"))
 
-       
-        net_amount_idx = df_filtered.columns.get_loc('Net Amount')
-        df_modified = df_filtered.copy()
-        df_modified.insert(net_amount_idx + 1, 'Blank Col 1', [''] * len(df_modified))
-        df_modified.insert(net_amount_idx + 2, 'Blank Col 2', [''] * len(df_modified))
+    return processed_files
 
-        
-        new_column_names = ['Date', 'ID', 'Name', 'Treatment Name', 'Doctors  Name', 'Total Amount', 'Base Value', 'Sgst', 'Cgst', 'Total inv', 'Invoice No']
-        df_modified.columns = new_column_names
-
-        
-        consultation_df = df_modified[df_modified['Treatment Name'].str.contains('consultation', case=False, na=False)].copy()
-        consultation_df['Base Value'] = pd.to_numeric(consultation_df['Total inv'], errors='coerce') / 1.18
-        consultation_df['Sgst'] = consultation_df['Base Value'] * 0.09
-        consultation_df['Cgst'] = consultation_df['Base Value'] * 0.09
-        consultation_df['Base Value'] = consultation_df['Base Value'].round(2)
-        consultation_df['Sgst'] = consultation_df['Sgst'].round(2)
-        consultation_df['Cgst'] = consultation_df['Cgst'].round(2)
-        consultation_df['Total Amount'] = consultation_df['Base Value']
-        consultation_df['Doctors  Name'] = 'Clinic'
-
-        ortho_keywords = ['dental ortho bonding', 'ortho bonding new', 'debonding', 'VENEERS', 'Ortho Scaling']
-        ortho_pattern = '|'.join(ortho_keywords)
-        ortho_bonding_df = df_modified[df_modified['Treatment Name'].str.contains(ortho_pattern, case=False, na=False)].copy()
-        ortho_bonding_df['Base Value'] = pd.to_numeric(ortho_bonding_df['Total inv'], errors='coerce') / 1.05
-        ortho_bonding_df['Sgst'] = ortho_bonding_df['Base Value'] * 0.025
-        ortho_bonding_df['Cgst'] = ortho_bonding_df['Base Value'] * 0.025
-        ortho_bonding_df['Base Value'] = ortho_bonding_df['Base Value'].round(2)
-        ortho_bonding_df['Sgst'] = ortho_bonding_df['Sgst'].round(2)
-        ortho_bonding_df['Cgst'] = ortho_bonding_df['Cgst'].round(2)
-        ortho_bonding_df['Total Amount'] = ortho_bonding_df['Base Value']
-
-        consultation_mask = df_modified['Treatment Name'].str.contains('consultation', case=False, na=False)
-        ortho_mask = df_modified['Treatment Name'].str.contains(ortho_pattern, case=False, na=False)
-        matched_rows_mask = consultation_mask | ortho_mask
-        rest_df = df_modified[~matched_rows_mask].copy()
-        rest_df = rest_df[~rest_df['Date'].astype(str).str.contains('Count:', case=False, na=False)]
-        rest_df['Base Value'] = ''
-        rest_df['Sgst'] = ''
-        rest_df['Cgst'] = ''
-
-        consultation_output_path = os.path.join(output_directory, "Treatments_Done_Consultation.xlsx")
-        ortho_output_path = os.path.join(output_directory, "Treatments_Done_Ortho_Bonding.xlsx")
-        rest_output_path = os.path.join(output_directory, "Treatments_Done_Rest.xlsx")
-        consultation_df.to_excel(consultation_output_path, index=False)
-        ortho_bonding_df.to_excel(ortho_output_path, index=False)
-        rest_df.to_excel(rest_output_path, index=False)
-
-        return {
-            "consultation_path": consultation_output_path,
-            "ortho_path": ortho_output_path,
-            "rest_path": rest_output_path
-        }
 
 def home(request):
     return render(request, 'processor/home.html')
