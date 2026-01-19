@@ -1,0 +1,18 @@
+build:
+  docker:
+    web: django_app/excel_web_app/Dockerfile
+    flask: flask_app/Dockerfile
+    nginx: nginx/Dockerfile
+run:
+  web:
+    command:
+      - python manage.py runserver 0.0.0.0:$PORT
+    image: web
+  flask:
+    command:
+      - gunicorn --bind 0.0.0.0:$PORT app:app
+    image: flask
+  nginx:
+    command:
+      - nginx -g 'daemon off;'
+    image: nginx

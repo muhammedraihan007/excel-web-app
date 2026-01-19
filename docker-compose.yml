@@ -11,23 +11,33 @@ services:
     depends_on:
       - django-app
       - flask-app
+    networks:
+      - app-network
 
   django-app:
     build: ./django_app/excel_web_app
-    expose:
-      - "8000"
+    ports:
+      - "8000:8000"
     environment:
       - PYTHONUNBUFFERED=1
       - DJANGO_SETTINGS_MODULE=excel_web_app.settings
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - static_volume:/app/staticfiles
+    networks:
+      - app-network
 
   flask-app:
     build: ./flask_app
     expose:
       - "5000"
     command: gunicorn --bind 0.0.0.0:5000 app:app
+    networks:
+      - app-network
 
 volumes:
   static_volume:
+
+networks:
+  app-network:
+    driver: bridge
